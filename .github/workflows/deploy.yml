@@ -1,0 +1,46 @@
+name: Test and Deploy to Pages
+
+on:
+  push:
+    branches: [ main ]
+
+# 授予流水线向 GitHub Pages 部署网页的权限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  # 阶段一：测试阶段 (CI)
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Install dependencies
+        run: npm install
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+      - name: Run automated tests
+        run: npm run test
+
+  # 阶段二：部署阶段 (CD)，只有 test 阶段成功通过后，才会执行此阶段
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.' # 部署整个根目录（包含 index.html）
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
